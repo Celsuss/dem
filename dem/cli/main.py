@@ -7,7 +7,7 @@ from dem import __command__, __app_name__
 from dem.cli.command import cp_cmd, info_cmd, list_cmd, pull_cmd, create_cmd, modify_cmd, delete_cmd, \
                             rename_cmd, run_cmd, export_cmd, load_cmd, add_reg_cmd, \
                             list_reg_cmd, del_reg_cmd, add_cat_cmd, list_cat_cmd, del_cat_cmd, \
-                            add_host_cmd
+                            add_host_cmd, install_cmd
 from dem.cli.console import stdout, stderr
 
 typer_cli = typer.Typer(rich_markup_mode="rich")
@@ -31,6 +31,24 @@ def list_(local: bool = typer.Option(False, help="Scope is the local host."),
         --all --tool -> List the tool images available in the axemsolutions registry.
     """
     list_cmd.execute(local, all, env, tool)
+
+@typer_cli.command("install")
+def install_(dev_env_name: str = typer.Argument(...,
+                                                help="Name of the Development Environment to get info about.")) -> None:
+    """
+    List the Development Environments available locally or for the organization.
+    
+    The following option combinations are suppported:
+
+        --local --env -> List the local Development Environments.
+
+        --all --env -> List the organization's Development Environments.
+
+        --local --tool -> List the local tool images.
+
+        --all --tool -> List the tool images available in the axemsolutions registry.
+    """
+    install_cmd.execute(dev_env_name)
 
 @typer_cli.command()
 def info(dev_env_name: str = typer.Argument(...,
