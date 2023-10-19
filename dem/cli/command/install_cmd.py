@@ -31,18 +31,14 @@ def pull_dev_env_image(platform: DevEnvLocalSetup, dev_env: DevEnv) -> None:
     Args:
         TODO: Add args
     """
-    # images_names = get_dev_env_images_names(dev_env)
-    print('Local dev env tools: {}'.format(dev_env.tools))
-    print('Platform tool images: {}'.format(platform.tool_images))
-
-    # Get tools images status
-    # image_statuses = dev_env.check_image_availability(platform.tool_images)
-    # print('Platform tool images statuses: {}'.format(image_statuses))
-    # image_statuses_txt = dev_env_local_status_messages[image_statuses[0]]
-    # print(image_statuses_txt)
-
+    # Check image statuses before pulling
+    image_statuses = dev_env.check_image_availability(platform.tool_images)
+    image_statuses_txt = dev_env_local_status_messages[image_statuses[0]]
+    print(image_statuses_txt)
 
     platform.pull_images(dev_env.tools)
+
+    # In the Dev Env descriptor set the “installed” key to “True”."installed": "True",
 
     return
 
