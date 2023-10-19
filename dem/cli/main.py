@@ -36,17 +36,7 @@ def list_(local: bool = typer.Option(False, help="Scope is the local host."),
 def install_(dev_env_name: str = typer.Argument(...,
                                                 help="Name of the Development Environment to get info about.")) -> None:
     """
-    List the Development Environments available locally or for the organization.
-    
-    The following option combinations are suppported:
-
-        --local --env -> List the local Development Environments.
-
-        --all --env -> List the organization's Development Environments.
-
-        --local --tool -> List the local tool images.
-
-        --all --tool -> List the tool images available in the axemsolutions registry.
+    Pull images listed in the local Development Environments
     """
     install_cmd.execute(dev_env_name)
 
