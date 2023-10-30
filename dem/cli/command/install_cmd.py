@@ -17,28 +17,70 @@ dev_env_local_status_messages = {
     DEV_ENV_LOCAL_INSTALLED: "Installed.",
 }
 
-def get_dev_env(platform: DevEnvLocalSetup, dev_env_name: str) -> DevEnv:
-    """ Get the dev env named dev_env_name
-    Args:
-        TODO: Add args
-        """
-    dev_env = platform.get_dev_env_by_name(dev_env_name)
-    return dev_env
+# def get_dev_env(platform: DevEnvLocalSetup, dev_env_name: str) -> DevEnv:
+#     """ Get the dev env named dev_env_name
+#     Args:
+#         TODO: Add args
+#         """
+#     dev_env = platform.get_dev_env_by_name(dev_env_name)
+#     return dev_env
+
+def get_dev_env_descriptor() -> dict:
+    dev_env_descriptor = {
+        "name": dev_env_name,
+        "tools": []
+    }
+
+    for tool_type, tool_image in tool_selection.items():
+        if "/" in tool_image:
+            registry, image = tool_image.split("/")
+            image_name = registry + '/' + image.split(":")[0]
+        else:
+            image = tool_image
+            image_name = image.split(":")[0]
+        tool_descriptor = {
+            "type": tool_type,
+            "image_name": image_name,
+            "image_version": image.split(":")[1],
+            "installed": True
+            # "image_status": DEV_ENV_LOCAL_INSTALLED # Use this?
+        }
+        dev_env_descriptor["tools"].append(tool_descriptor)
+
+    return dev_env_descriptor
 
 
-def pull_dev_env_image(platform: DevEnvLocalSetup, dev_env: DevEnv) -> None:
+def overwrite_existing_dev_env(original_dev_env: DevEnv, new_dev_env_descriptor: dict) -> None:
+    original_dev_env.tools = new_dev_env_descriptor["tools"]
+
+
+def install_dev_env(platform: DevEnvLocalSetup, dev_env: DevEnv) -> None:
     """ TODO Document
     Args:
         TODO: Add args
     """
+
     # Check image statuses before pulling
     image_statuses = dev_env.check_image_availability(platform.tool_images)
-    image_statuses_txt = dev_env_local_status_messages[image_statuses[0]]
-    print(image_statuses_txt)
 
-    platform.pull_images(dev_env.tools)
+    tools_to_install = set()
+    for tool in dev_env.tools:
+        if tool.image_status == DEV_ENV_LOCAL_INSTALLED:
+            # TODO: Saved for printing
+            continue
+        tools_to_install.append(tool)
+        continue
 
-    # In the Dev Env descriptor set the “installed” key to “True”."installed": "True",
+    platform.pull_images(tools_to_install)
+
+    # Get new descriptor
+    new_dev_env_descriptor = get_dev_env_descriptor_from_user(dev_env_name, tool_image_list)
+    # Overwrite old
+    dev_env.tools = new_dev_env_descriptor["tools"]
+
+    platform.flush_to_file()
+
+    # In the Dev Env descriptor set the “installed” key to “True”."installed": "True",p
 
     return
 
@@ -46,7 +88,10 @@ def pull_dev_env_image(platform: DevEnvLocalSetup, dev_env: DevEnv) -> None:
 def execute(dev_env_name: str) -> None:
     print('Test install')
     platform = DevEnvLocalSetup()
-    dev_env = get_dev_env(platform, dev_env_name)
+    print('Got platform')
+    # dev_env = get_dev_env(platform, dev_env_name)
+    dev_env = platform.get_dev_env_by_name(dev_env_name)
+    print('Got dev env')
 
     if dev_env is None:
         stderr.print(\
@@ -54,16 +99,23 @@ def execute(dev_env_name: str) -> None:
                      Try 'dem install --help' for help.
 
                      Error: No local dev environment named {} found""".format(dev_env_name))
+        return
 
-    pull_dev_env_image(platform, dev_env)
+    install_dev_env(platform, dev_env)
+
+
+if __name__ == '__main__':
+    execute("Tutorial")
 
 """ Development notes, REMOVE LATER
+
+json path: "/.config/axem/dem"
 
 command: dem install DEV_ENV_NAME
 
 1. [X] The DEM looks for the DEV_ENV_NAME in the local dev_env.json.
    If the DEM can’t find the Dev Env, it should report an error for the user and stop the execution.
-2. [ ] The DEM pulls the images from the registries to the given host machines.
+2. [X] The DEM pulls the images from the registries to the given host machines.
 3. [ ] The DEM should inform the user about the successful operation if all the images are pulled.
        Maybe use:
         `
