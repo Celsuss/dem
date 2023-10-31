@@ -1,9 +1,11 @@
 """install CLI command implementation."""
 # dem/cli/install_cmd.py
 
-from dem.cli.console import stdout, stderr
 from dem.core.platform import DevEnvLocalSetup
+from dem.core.tool_images import ToolImages
+from dem.cli.console import stdout, stderr
 from dem.core.dev_env import DevEnv
+from rich.table import Table
 
 (
     DEV_ENV_LOCAL_NOT_AVAILABLE,
@@ -11,19 +13,25 @@ from dem.core.dev_env import DevEnv
     DEV_ENV_LOCAL_INSTALLED,
 ) = range(3)
 
+image_status_messages = {
+    ToolImages.NOT_AVAILABLE: "[red]Error: Required image is not available![/]",
+    ToolImages.LOCAL_ONLY: "Image is available locally.",
+    ToolImages.REGISTRY_ONLY: "Image is available in the registry.",
+    ToolImages.LOCAL_AND_REGISTRY: "Image is available locally and in the registry.",
+}
+
 dev_env_local_status_messages = {
     DEV_ENV_LOCAL_NOT_AVAILABLE: "[red]Error: Required image is not available![/]",
     DEV_ENV_LOCAL_REINSTALL: "Incomplete local install. The missing images are available in the registry. Use `dem pull` to reinstall.",
     DEV_ENV_LOCAL_INSTALLED: "Installed.",
 }
 
-# def get_dev_env(platform: DevEnvLocalSetup, dev_env_name: str) -> DevEnv:
-#     """ Get the dev env named dev_env_name
-#     Args:
-#         TODO: Add args
-#         """
-#     dev_env = platform.get_dev_env_by_name(dev_env_name)
-#     return dev_env
+def get_dev_env_names() -> []:
+    platform = DevEnvLocalSetup()
+    local_dev_envs = []
+    for local_dev_env in platform.local_dev_envs:
+        local_dev_envs.append(local_dev_env.name)
+    return local_dev_envs
 
 def get_dev_env_descriptor() -> dict:
     dev_env_descriptor = {
@@ -54,6 +62,24 @@ def overwrite_existing_dev_env(original_dev_env: DevEnv, new_dev_env_descriptor:
     original_dev_env.tools = new_dev_env_descriptor["tools"]
 
 
+def print_results(newly_installed_tools: [], installed_tools: [], tools_not_available) -> None:
+    tool_info_table = Table()
+    tool_info_table.add_column("Image")
+    tool_info_table.add_column("Status")
+
+    for tool in newly_installed_tools:
+        tool_info_table.add_row(tool["image_name"] + tool["image_version"],
+                                dev_env_local_status_messages[tool["image_status"]])
+    for image in installed_tools:
+        tool_info_table.add_row(tool["image_name"] + tool["image_version"],
+                                dev_env_local_status_messages[tool["image_status"]])
+    for image in tools_not_available:
+        tool_info_table.add_row(tool["image_name"] + tool["image_version"],
+                                dev_env_local_status_messages[tool["image_status"]])
+
+    stdout.print(tool_info_table)
+
+
 def install_dev_env(platform: DevEnvLocalSetup, dev_env: DevEnv) -> None:
     """ TODO Document
     Args:
@@ -63,35 +89,38 @@ def install_dev_env(platform: DevEnvLocalSetup, dev_env: DevEnv) -> None:
     # Check image statuses before pulling
     image_statuses = dev_env.check_image_availability(platform.tool_images)
 
-    tools_to_install = set()
-    for tool in dev_env.tools:
-        if tool.image_status == DEV_ENV_LOCAL_INSTALLED:
-            # TODO: Saved for printing
-            continue
-        tools_to_install.append(tool)
-        continue
+    tools_to_install = []
+    installed_tools = []
+    tools_not_available = []
 
-    platform.pull_images(tools_to_install)
+    for tool, image_status in zip(dev_env.tools, image_statuses):
+        if image_status == DEV_ENV_LOCAL_INSTALLED:
+            installed_tools.append(tool)
+        elif image_status == DEV_ENV_LOCAL_NOT_AVAILABLE:
+            tools_not_available.append(tool)
+        else:
+            tools_to_install.append(tool)
+
+    if len(tools_to_install) == 0:
+        print_results(tools_to_install, installed_tools, tools_not_available)
+        return
+
+    print_results(tools_to_install, installed_tools, tools_not_available)
+
+    # platform.pull_images(tools_to_install)
 
     # Get new descriptor
-    new_dev_env_descriptor = get_dev_env_descriptor_from_user(dev_env_name, tool_image_list)
+    # new_dev_env_descriptor = get_dev_env_descriptor(dev_env_name, )
     # Overwrite old
-    dev_env.tools = new_dev_env_descriptor["tools"]
-
-    platform.flush_to_file()
-
-    # In the Dev Env descriptor set the “installed” key to “True”."installed": "True",p
+    # dev_env.tools = new_dev_env_descriptor["tools"]
+    # platform.flush_to_file()
 
     return
 
 
 def execute(dev_env_name: str) -> None:
-    print('Test install')
     platform = DevEnvLocalSetup()
-    print('Got platform')
-    # dev_env = get_dev_env(platform, dev_env_name)
     dev_env = platform.get_dev_env_by_name(dev_env_name)
-    print('Got dev env')
 
     if dev_env is None:
         stderr.print(\
@@ -105,6 +134,7 @@ def execute(dev_env_name: str) -> None:
 
 
 if __name__ == '__main__':
+    # get_dev_env_names()
     execute("Tutorial")
 
 """ Development notes, REMOVE LATER
